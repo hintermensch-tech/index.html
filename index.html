@@ -89,7 +89,7 @@
 <body>
 <div id="app"></div>
 <script>
-const SK='vycvik_v1', TK='todos_v1';
+const SK='vycvik_v2', TK='todos_v2';
 const DEF=[
   {id:10,label:'V hodina',      months:1, date:'',group:'Měsíční'},
   {id:20,label:'V přezkoušení', months:3, date:'',group:'3 měsíce'},
@@ -121,7 +121,7 @@ function cstat(ds,months){
   const st=new Date(ds),ex=addM(ds,months),now=new Date();
   const pct=Math.min(Math.max((now-st)/(ex-st),0),1);
   const days=Math.ceil((ex-now)/86400000);
-  const state=days<0?'overdue':days<=Math.max(months*3,14)?'warning':'ok';
+  const state=days<0?'overdue':pct>=0.9?'danger':pct>=0.7?'warning':'ok';
   return{days,pct,state,exp:ex.toLocaleDateString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric'})};
 }
 function ctodo(a,d){
@@ -129,14 +129,15 @@ function ctodo(a,d){
   const s=new Date(a),e=new Date(d),n=new Date(),tot=e-s;
   if(tot<=0)return{days:0,pct:1,state:'overdue'};
   const pct=Math.min(Math.max((n-s)/tot,0),1),days=Math.ceil((e-n)/86400000);
-  return{days,pct,state:days<0?'overdue':days<=3?'warning':'ok'};
+  return{days,pct,state:days<0?'overdue':pct>=0.9?'danger':pct>=0.7?'warning':'ok'};
 }
 
 const COL={
-  ok:{c:'#1a8f52',bg:'#d4f0e0',tx:'#0e6038'},
-  warning:{c:'#c09820',bg:'#fdf4cc',tx:'#8a6c00'},
-  overdue:{c:'#c0392b',bg:'#fde8e4',tx:'#8a2010'},
-  unset:{c:'#ddd0a8',bg:'#f0ead8',tx:'#7a6830'},
+  ok:     {c:'#1a8f52',bg:'#a8e8c0',tx:'#0a4020'},
+  warning:{c:'#c05800',bg:'#f8c080',tx:'#6a2800'},
+  danger: {c:'#b02010',bg:'#f09080',tx:'#6a1008'},
+  overdue:{c:'#303030',bg:'#b0a898',tx:'#1a1610'},
+  unset:  {c:'#ddd0a8',bg:'#f0ead8',tx:'#7a6830'},
 };
 
 function bar(pct){
@@ -149,45 +150,66 @@ function animBars(){
   });
 }
 
+function renderItem(item){
+  const{days,pct,state,exp}=cstat(item.date,item.months);
+  const co=COL[state]||COL.unset;
+  const cd=days===null?'nastav datum':days<0?Math.abs(days)+'d po expiraci':days===0?'Dnes!':days+'d zbývá';
+  const bl=state==='overdue'?' style="animation:blink 1.2s ease infinite"':'';
+  return `<div class="card" style="background:${item.date?co.bg+'44':'#fff'};border-color:${item.date?co.c+'66':'#ddd0a8'}">
+    <div class="stripe"></div>
+    <div class="cbody" style="border-left:4px solid ${co.c}">
+      <div class="nrow">
+        <span class="iname">${item.label}</span>
+        <div class="nright">
+          <span class="pbadge">${pl(item.months)}</span>
+          <button class="delbtn" onclick="delItem(${item.id})">✕</button>
+        </div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div class="flabel">Datum od</div>
+        <div class="fbox"><span class="ftext">${item.date?fmt(item.date):'—'}</span><span class="ficon">▾</span><input type="date" value="${item.date||''}" onchange="updDate(${item.id},this.value)"/></div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div class="flabel" style="color:${item.date?co.tx:'#7a6830'}">Platné do</div>
+        <div class="fbox" style="cursor:default;color:${item.date?co.tx:'#b09848'};background:${item.date?co.bg:'#f0ead8'};border-color:${item.date?co.c+'99':'#ddd0a8'}">${exp||'—'}</div>
+      </div>
+      <div class="cdrow">
+        ${item.date?`<span class="pct">${Math.round(pct*100)}% uplynulo</span>`:'<span></span>'}
+        <span class="badge" style="color:${co.tx};background:${co.bg};border:2px solid ${co.c}55"${bl}>${cd}</span>
+      </div>
+      ${item.date?bar(pct):''}
+    </div>
+  </div>`;
+}
+
+function getPct(item){
+  if(!item.date)return 0;
+  const st=new Date(item.date),ex=addM(item.date,item.months),now=new Date();
+  return Math.min(Math.max((now-st)/(ex-st),0),1);
+}
+
 function rPeriod(){
   const gm={};
   S.items.forEach(i=>{const g=i.group||'Ostatní';if(!gm[g]||i.months<gm[g])gm[g]=i.months;});
   const grps=[...new Set(S.items.map(i=>i.group||'Ostatní'))].sort((a,b)=>(gm[a]||999)-(gm[b]||999));
+
+  const priorityIds=new Set(S.items.filter(i=>getPct(i)>=0.9).map(i=>i.id));
+  const priorityItems=[...S.items].filter(i=>priorityIds.has(i.id)).sort((a,b)=>getPct(b)-getPct(a));
+
   let h='';
+
+  if(priorityItems.length>0){
+    h+=`<div class="gdiv"><div class="gl" style="background:linear-gradient(90deg,transparent,#b02010)"></div><div class="glabel" style="background:#f09080;border-color:#b02010;color:#3a0808">🔴 Prioritní</div><div class="gr" style="background:linear-gradient(90deg,#b02010,transparent)"></div></div>`;
+    priorityItems.forEach(item=>{ h+=renderItem(item); });
+  }
+
   grps.forEach(g=>{
+    const groupItems=S.items.filter(i=>(i.group||'Ostatní')===g&&!priorityIds.has(i.id));
+    if(groupItems.length===0)return;
     h+=`<div class="gdiv"><div class="gl"></div><div class="glabel">${g}</div><div class="gr"></div></div>`;
-    S.items.filter(i=>(i.group||'Ostatní')===g).forEach(item=>{
-      const{days,pct,state,exp}=cstat(item.date,item.months);
-      const co=COL[state]||COL.unset;
-      const cd=days===null?'nastav datum':days<0?Math.abs(days)+'d po expiraci':days===0?'Dnes!':days+'d zbývá';
-      const bl=state==='overdue'?' style="animation:blink 1.2s ease infinite"':'';
-      h+=`<div class="card">
-        <div class="stripe"></div>
-        <div class="cbody" style="border-left:4px solid ${co.c}">
-          <div class="nrow">
-            <span class="iname">${item.label}</span>
-            <div class="nright">
-              <span class="pbadge">${pl(item.months)}</span>
-              <button class="delbtn" onclick="delItem(${item.id})">✕</button>
-            </div>
-          </div>
-          <div style="margin-bottom:8px">
-            <div class="flabel">Datum od</div>
-            <div class="fbox"><span class="ftext">${item.date?fmt(item.date):'—'}</span><span class="ficon">▾</span><input type="date" value="${item.date||''}" onchange="updDate(${item.id},this.value)"/></div>
-          </div>
-          <div style="margin-bottom:10px">
-            <div class="flabel" style="color:${item.date?co.tx:'#7a6830'}">Platné do</div>
-            <div class="fbox" style="cursor:default;color:${item.date?co.tx:'#b09848'};background:${item.date?co.bg:'#f0ead8'};border-color:${item.date?co.c+'99':'#ddd0a8'}">${exp||'—'}</div>
-          </div>
-          <div class="cdrow">
-            ${item.date?`<span class="pct">${Math.round(pct*100)}% uplynulo</span>`:'<span></span>'}
-            <span class="badge" style="color:${co.tx};background:${co.bg};border:2px solid ${co.c}55"${bl}>${cd}</span>
-          </div>
-          ${item.date?bar(pct):''}
-        </div>
-      </div>`;
-    });
+    groupItems.forEach(item=>{ h+=renderItem(item); });
   });
+
   if(S.showAdd){
     h+=`<div class="fcard"><div class="stripe"></div><div class="fbody">
       <div class="ftitle">Nová položka</div>
@@ -212,37 +234,55 @@ function rTodos(){
     <button class="pbtn" onclick="addTodo()">Přidat úkol</button>
   </div></div>`;
 
-  if(S.todos.length===0){h+=`<div class="empty">Žádné úkoly</div>`;}
-  else S.todos.forEach(t=>{
-    const{days,pct,state}=ctodo(t.added,t.deadline);
-    const co=COL[state]||COL.unset;
-    const cd=days===null?null:days<0?Math.abs(days)+'d po termínu':days===0?'Dnes!':days+'d zbývá';
-    const bl=state==='overdue'?' style="animation:blink 1.2s ease infinite"':'';
-    h+=`<div class="tcard" id="tc${t.id}">
-      <div class="stripe"></div>
-      <div class="cbody">
-        <div class="trow">
-          <div class="chk" onclick="doneTodo(${t.id})"></div>
-          <span class="ttxt">${t.text}</span>
-          <button class="delbtn" onclick="delTodo(${t.id})">✕</button>
-        </div>
-        <div class="dgrid" style="margin-bottom:${t.deadline?'10px':'0'}">
-          <div>
-            <div class="flabel">Zadáno</div>
-            <div class="fbox" style="cursor:default;background:#f0ead8">${fmt(t.added)}</div>
+  if(S.todos.length===0){
+    h+=`<div class="empty">Žádné úkoly</div>`;
+  } else {
+    const todayStr=new Date().toISOString().slice(0,10);
+    const priorityTodos=S.todos.filter(t=>t.deadline&&t.deadline<=todayStr);
+    const normalTodos=S.todos.filter(t=>!t.deadline||t.deadline>todayStr);
+    if(priorityTodos.length>0){
+      h+=`<div class="gdiv"><div class="gl" style="background:linear-gradient(90deg,transparent,#b02010)"></div><div class="glabel" style="background:#f09080;border-color:#b02010;color:#3a0808">🔴 Prioritní</div><div class="gr" style="background:linear-gradient(90deg,#b02010,transparent)"></div></div>`;
+    }
+    const sorted=[
+      ...priorityTodos.sort((a,b)=>new Date(a.deadline)-new Date(b.deadline)),
+      ...normalTodos.sort((a,b)=>{
+        if(!a.deadline&&!b.deadline)return 0;
+        if(!a.deadline)return 1;
+        if(!b.deadline)return -1;
+        return new Date(a.deadline)-new Date(b.deadline);
+      })
+    ];
+    sorted.forEach(t=>{
+      const{days,pct,state}=ctodo(t.added,t.deadline);
+      const co=COL[state]||COL.unset;
+      const cd=days===null?null:days<0?Math.abs(days)+'d po termínu':days===0?'Dnes!':days+'d zbývá';
+      const bl=state==='overdue'?' style="animation:blink 1.2s ease infinite"':'';
+      h+=`<div class="tcard" id="tc${t.id}" style="background:${t.deadline?co.bg+'44':'#fff'};border-color:${t.deadline?co.c+'66':'#ddd0a8'}">
+        <div class="stripe"></div>
+        <div class="cbody">
+          <div class="trow">
+            <div class="chk" onclick="doneTodo(${t.id})"></div>
+            <span class="ttxt">${t.text}</span>
+            <button class="delbtn" onclick="delTodo(${t.id})">✕</button>
           </div>
-          <div>
-            <div class="flabel" style="color:${t.deadline?co.tx:'#7a6830'}">Splnit do</div>
-            <div class="fbox" style="color:${t.deadline?co.tx:'#1a1608'};background:${t.deadline?co.bg:'#fff'};border-color:${t.deadline?co.c+'99':'#ddd0a8'}">
-              <span class="ftext">${t.deadline?fmt(t.deadline):'—'}</span><span class="ficon">▾</span>
-              <input type="date" value="${t.deadline||''}" onchange="updTodo(${t.id},this.value)"/>
+          <div class="dgrid" style="margin-bottom:${t.deadline?'10px':'0'}">
+            <div>
+              <div class="flabel">Zadáno</div>
+              <div class="fbox" style="cursor:default;background:#f0ead8">${fmt(t.added)}</div>
+            </div>
+            <div>
+              <div class="flabel" style="color:${t.deadline?co.tx:'#7a6830'}">Splnit do</div>
+              <div class="fbox" style="color:${t.deadline?co.tx:'#1a1608'};background:${t.deadline?co.bg:'#fff'};border-color:${t.deadline?co.c+'99':'#ddd0a8'}">
+                <span class="ftext">${t.deadline?fmt(t.deadline):'—'}</span><span class="ficon">▾</span>
+                <input type="date" value="${t.deadline||''}" onchange="updTodo(${t.id},this.value)"/>
+              </div>
             </div>
           </div>
+          ${t.deadline&&t.added?`<div class="cdrow"><span class="pct">${Math.round(pct*100)}% uplynulo</span>${cd?`<span class="badge" style="color:${co.tx};background:${co.bg};border:2px solid ${co.c}55"${bl}>${cd}</span>`:''}</div>${bar(pct)}`:''}`+`
         </div>
-        ${t.deadline&&t.added?`<div class="cdrow"><span class="pct">${Math.round(pct*100)}% uplynulo</span>${cd?`<span class="badge" style="color:${co.tx};background:${co.bg};border:2px solid ${co.c}55"${bl}>${cd}</span>`:''}</div>${bar(pct)}`:''}
-      </div>
-    </div>`;
-  });
+      </div>`;
+    });
+  }
   return h;
 }
 
@@ -292,3 +332,45 @@ if ("serviceWorker" in navigator) {
 </body>
 </html>
 
+{
+  "name": "Výcvikový systém",
+  "short_name": "Výcvik",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f5f2ea",
+  "theme_color": "#f5f2ea",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
+const CACHE = "vycvik-v1";
+const FILES = ["index.html", "manifest.json", "icon.png"];
+
+self.addEventListener("install", e => {
+  e.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(FILES))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", e => {
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match("index.html")))
+  );
+});
