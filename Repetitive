@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Výcvik"/>
+  <meta name="theme-color" content="#f5f2ea"/>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Výcvik">
+  <title>Výcvikový systém</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{background:#f5f2ea;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;color:#1a1608;min-height:100vh}
+    input,button{font-family:inherit}
+    button{cursor:pointer;border:none;background:none}
+    input[type=date]::-webkit-calendar-picker-indicator{opacity:.5;cursor:pointer}
+    @keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.4)}}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+    #app{max-width:460px;margin:0 auto;padding:36px 16px 100px}
+
+    .chip{display:inline-flex;align-items:center;gap:7px;background:#fdf4cc;border:2px solid #c8b878;border-radius:99px;padding:5px 14px 5px 9px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8a6c00;font-weight:700;margin-bottom:18px}
+    .chip-dot{width:8px;height:8px;border-radius:50%;background:#c09820;box-shadow:0 0 8px #c09820;animation:pdot 2.5s ease-in-out infinite;flex-shrink:0;display:inline-block}
+    .t1{font-size:38px;font-weight:900;letter-spacing:-.04em;line-height:1;margin-bottom:6px}
+    .tbar{width:52px;height:4px;background:linear-gradient(90deg,#c09820,#8a6c00);border-radius:99px;margin-bottom:8px;box-shadow:0 2px 8px #c0982066}
+    .t2{font-size:26px;font-weight:900;letter-spacing:-.03em;color:#c09820;margin-bottom:8px}
+    .sub{font-size:13px;color:#7a6830;font-weight:700;margin-bottom:36px}
+
+    .tabs{display:flex;background:#fff;padding:4px;border-radius:12px;border:2px solid #ddd0a8;margin-bottom:24px}
+    .tab{flex:1;padding:10px 0;border:2px solid transparent;border-radius:8px;font-size:13px;font-weight:800;color:#b09848;transition:all .2s}
+    .tab.on{background:#fdf4cc;border-color:#c8b878;color:#8a6c00}
+
+    .gdiv{display:flex;align-items:center;gap:10px;padding:16px 0 8px}
+    .gl{flex:1;height:2px;background:linear-gradient(90deg,transparent,#c8b878)}
+    .gr{flex:1;height:2px;background:linear-gradient(90deg,#c8b878,transparent)}
+    .glabel{background:#fdf4cc;border:2px solid #c8b878;border-radius:99px;padding:3px 12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8a6c00;font-weight:700}
+
+    .card{background:#fff;border:2px solid #ddd0a8;border-radius:12px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+    .stripe{height:3px;background:linear-gradient(90deg,#c09820,#8a6c00,#c09820);opacity:.7}
+    .cbody{padding:12px 14px 14px}
+
+    .nrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .iname{font-size:16px;font-weight:900;letter-spacing:-.02em}
+    .nright{display:flex;align-items:center;gap:6px}
+    .pbadge{font-size:11px;color:#8a6c00;background:#fdf4cc;border:2px solid #c8b878;border-radius:99px;padding:2px 9px;font-weight:700}
+    .delbtn{color:#ddd0a8;font-size:16px;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center}
+    .delbtn:active{background:#fde8e4;color:#c0392b}
+
+    .flabel{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7a6830;font-weight:700;margin-bottom:4px}
+    .fbox{width:100%;background:#fff;border:2px solid #ddd0a8;border-radius:8px;padding:8px 11px;color:#1a1608;font-size:13px;font-weight:700;display:flex;align-items:center;min-height:40px;position:relative;cursor:pointer}
+    .fbox input[type=date]{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:none;background:transparent;cursor:pointer}
+    .ficon{margin-left:auto;color:#c8b878;font-size:13px;pointer-events:none;flex-shrink:0}
+    .ftext{pointer-events:none;flex:1}
+
+    .cdrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .pct{font-size:10px;font-weight:700;color:#b09848}
+    .badge{font-size:12px;font-weight:800;padding:4px 12px;border-radius:99px}
+
+    .btrack{height:6px;border-radius:99px;background:linear-gradient(90deg,#f0e0a0,#e8d080);overflow:hidden}
+    .bfill{height:100%;background:linear-gradient(90deg,#c0392b,#e05040);border-radius:99px;transition:width 1.2s cubic-bezier(.22,.68,0,1.1);width:0}
+
+    .addbtn{width:100%;background:transparent;color:#b09848;border:2px dashed #ddd0a8;border-radius:12px;padding:12px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-top:10px;font-weight:700}
+    .addbtn:active{color:#8a6c00;border-color:#c8b878;background:#fdf4cc}
+
+    .fcard{background:#fff;border:2px solid #c8b878;border-radius:12px;overflow:hidden;margin-top:10px}
+    .fbody{padding:14px}
+    .ftitle{font-size:11px;font-weight:900;color:#8a6c00;text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px}
+    .finp{width:100%;background:#fff;border:2px solid #ddd0a8;border-radius:8px;padding:8px 11px;color:#1a1608;font-size:13px;font-weight:700;outline:none;display:block;min-height:40px}
+    .finp::placeholder{color:#b09848;font-weight:600}
+    .frow{display:flex;gap:8px}
+    .pbtn{background:linear-gradient(135deg,#c09820,#8a6c00);color:#fff;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:800}
+    .sbtn{color:#7a6830;border:2px solid #ddd0a8;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700}
+
+    .tcard{background:#fff;border:2px solid #ddd0a8;border-radius:12px;overflow:hidden;margin-bottom:10px;transition:opacity .38s,transform .38s}
+    .tcard.gone{opacity:0;transform:translateX(30px)}
+    .trow{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+    .chk{width:22px;height:22px;border:2px solid #c8b878;border-radius:6px;flex-shrink:0;margin-top:1px;cursor:pointer}
+    .chk:active{background:#d4f0e0;border-color:#1a8f52}
+    .ttxt{font-size:14px;font-weight:700;color:#3a3010;flex:1;line-height:1.45}
+    .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .empty{text-align:center;padding:48px 0;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#ddd0a8;font-weight:700}
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const SK='vycvik_v1', TK='todos_v1';
+const DEF=[
+  {id:10,label:'V hodina',      months:1, date:'',group:'Měsíční'},
+  {id:20,label:'V přezkoušení', months:3, date:'',group:'3 měsíce'},
+  {id:30,label:'Seskok den',    months:12,date:'',group:'Roční'},
+  {id:31,label:'Seskok noc',    months:12,date:'',group:'Roční'},
+  {id:32,label:'Slanění',       months:12,date:'',group:'Roční'},
+  {id:33,label:'Trhání',        months:12,date:'',group:'Roční'},
+  {id:40,label:'PLP',           months:24,date:'',group:'Dvouroční'},
+  {id:41,label:'SERE',          months:48,date:'',group:'Čtyřleté'},
+  {id:50,label:'CLS',           months:36,date:'',group:'Tříleté'},
+];
+let S={items:[],todos:[],tab:'dates',showAdd:false};
+
+function load(){
+  try{S.items=JSON.parse(localStorage.getItem(SK))||DEF.map(x=>({...x}));}catch{S.items=DEF.map(x=>({...x}));}
+  try{S.todos=JSON.parse(localStorage.getItem(TK))||[];}catch{S.todos=[];}
+}
+function sv(){
+  try{localStorage.setItem(SK,JSON.stringify(S.items));}catch{}
+  try{localStorage.setItem(TK,JSON.stringify(S.todos));}catch{}
+}
+
+function addM(ds,m){const d=new Date(ds);d.setMonth(d.getMonth()+m);return d;}
+function fmt(s){if(!s)return'—';return new Date(s).toLocaleDateString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric'});}
+function pl(m){return m>=12?(m/12)+'r':m+'m';}
+
+function cstat(ds,months){
+  if(!ds)return{days:null,pct:0,state:'unset',exp:null};
+  const st=new Date(ds),ex=addM(ds,months),now=new Date();
+  const pct=Math.min(Math.max((now-st)/(ex-st),0),1);
+  const days=Math.ceil((ex-now)/86400000);
+  const state=days<0?'overdue':days<=Math.max(months*3,14)?'warning':'ok';
+  return{days,pct,state,exp:ex.toLocaleDateString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric'})};
+}
+function ctodo(a,d){
+  if(!a||!d)return{days:null,pct:0,state:'unset'};
+  const s=new Date(a),e=new Date(d),n=new Date(),tot=e-s;
+  if(tot<=0)return{days:0,pct:1,state:'overdue'};
+  const pct=Math.min(Math.max((n-s)/tot,0),1),days=Math.ceil((e-n)/86400000);
+  return{days,pct,state:days<0?'overdue':days<=3?'warning':'ok'};
+}
+
+const COL={
+  ok:{c:'#1a8f52',bg:'#d4f0e0',tx:'#0e6038'},
+  warning:{c:'#c09820',bg:'#fdf4cc',tx:'#8a6c00'},
+  overdue:{c:'#c0392b',bg:'#fde8e4',tx:'#8a2010'},
+  unset:{c:'#ddd0a8',bg:'#f0ead8',tx:'#7a6830'},
+};
+
+function bar(pct){
+  return`<div class="btrack"><div class="bfill" data-w="${Math.round(pct*100)}"></div></div>`;
+}
+function animBars(){
+  document.querySelectorAll('.bfill[data-w]').forEach(el=>{
+    const w=el.dataset.w;
+    requestAnimationFrame(()=>setTimeout(()=>{el.style.width=w+'%';},60));
+  });
+}
+
+function rPeriod(){
+  const gm={};
+  S.items.forEach(i=>{const g=i.group||'Ostatní';if(!gm[g]||i.months<gm[g])gm[g]=i.months;});
+  const grps=[...new Set(S.items.map(i=>i.group||'Ostatní'))].sort((a,b)=>(gm[a]||999)-(gm[b]||999));
+  let h='';
+  grps.forEach(g=>{
+    h+=`<div class="gdiv"><div class="gl"></div><div class="glabel">${g}</div><div class="gr"></div></div>`;
+    S.items.filter(i=>(i.group||'Ostatní')===g).forEach(item=>{
+      const{days,pct,state,exp}=cstat(item.date,item.months);
+      const co=COL[state]||COL.unset;
+      const cd=days===null?'nastav datum':days<0?Math.abs(days)+'d po expiraci':days===0?'Dnes!':days+'d zbývá';
+      const bl=state==='overdue'?' style="animation:blink 1.2s ease infinite"':'';
+      h+=`<div class="card">
+        <div class="stripe"></div>
+        <div class="cbody" style="border-left:4px solid ${co.c}">
+          <div class="nrow">
+            <span class="iname">${item.label}</span>
+            <div class="nright">
+              <span class="pbadge">${pl(item.months)}</span>
+              <button class="delbtn" onclick="delItem(${item.id})">✕</button>
+            </div>
+          </div>
+          <div style="margin-bottom:8px">
+            <div class="flabel">Datum od</div>
+            <div class="fbox"><span class="ftext">${item.date?fmt(item.date):'—'}</span><span class="ficon">▾</span><input type="date" value="${item.date||''}" onchange="updDate(${item.id},this.value)"/></div>
+          </div>
+          <div style="margin-bottom:10px">
+            <div class="flabel" style="color:${item.date?co.tx:'#7a6830'}">Platné do</div>
+            <div class="fbox" style="cursor:default;color:${item.date?co.tx:'#b09848'};background:${item.date?co.bg:'#f0ead8'};border-color:${item.date?co.c+'99':'#ddd0a8'}">${exp||'—'}</div>
+          </div>
+          <div class="cdrow">
+            ${item.date?`<span class="pct">${Math.round(pct*100)}% uplynulo</span>`:'<span></span>'}
+            <span class="badge" style="color:${co.tx};background:${co.bg};border:2px solid ${co.c}55"${bl}>${cd}</span>
+          </div>
+          ${item.date?bar(pct):''}
+        </div>
+      </div>`;
+    });
+  });
+  if(S.showAdd){
+    h+=`<div class="fcard"><div class="stripe"></div><div class="fbody">
+      <div class="ftitle">Nová položka</div>
+      <div style="margin-bottom:8px"><div class="flabel">Název</div><input class="finp" id="nL" placeholder="Název..."/></div>
+      <div class="frow" style="margin-bottom:12px">
+        <div style="flex:1"><div class="flabel">Skupina</div><input class="finp" id="nG" placeholder="Roční…"/></div>
+        <div style="width:80px"><div class="flabel">Měsíce</div><input class="finp" id="nM" type="number" value="3" min="1" style="text-align:center"/></div>
+      </div>
+      <div class="frow"><button class="pbtn" onclick="addItem()">Přidat</button><button class="sbtn" onclick="tgAdd(false)">Zrušit</button></div>
+    </div></div>`;
+  } else {
+    h+=`<button class="addbtn" onclick="tgAdd(true)">+ přidat položku</button>`;
+  }
+  return h;
+}
+
+function rTodos(){
+  let h=`<div class="fcard" style="margin-bottom:18px"><div class="stripe"></div><div class="fbody">
+    <div class="ftitle">Nový úkol</div>
+    <div style="margin-bottom:8px"><div class="flabel">Popis</div><input class="finp" id="tT" placeholder="Popis úkolu…"/></div>
+    <div style="margin-bottom:12px"><div class="flabel">Splnit do (volitelné)</div><input class="finp" id="tD" type="date"/></div>
+    <button class="pbtn" onclick="addTodo()">Přidat úkol</button>
+  </div></div>`;
+
+  if(S.todos.length===0){h+=`<div class="empty">Žádné úkoly</div>`;}
+  else S.todos.forEach(t=>{
+    const{days,pct,state}=ctodo(t.added,t.deadline);
+    const co=COL[state]||COL.unset;
+    const cd=days===null?null:days<0?Math.abs(days)+'d po termínu':days===0?'Dnes!':days+'d zbývá';
+    const bl=state==='overdue'?' style="animation:blink 1.2s ease infinite"':'';
+    h+=`<div class="tcard" id="tc${t.id}">
+      <div class="stripe"></div>
+      <div class="cbody">
+        <div class="trow">
+          <div class="chk" onclick="doneTodo(${t.id})"></div>
+          <span class="ttxt">${t.text}</span>
+          <button class="delbtn" onclick="delTodo(${t.id})">✕</button>
+        </div>
+        <div class="dgrid" style="margin-bottom:${t.deadline?'10px':'0'}">
+          <div>
+            <div class="flabel">Zadáno</div>
+            <div class="fbox" style="cursor:default;background:#f0ead8">${fmt(t.added)}</div>
+          </div>
+          <div>
+            <div class="flabel" style="color:${t.deadline?co.tx:'#7a6830'}">Splnit do</div>
+            <div class="fbox" style="color:${t.deadline?co.tx:'#1a1608'};background:${t.deadline?co.bg:'#fff'};border-color:${t.deadline?co.c+'99':'#ddd0a8'}">
+              <span class="ftext">${t.deadline?fmt(t.deadline):'—'}</span><span class="ficon">▾</span>
+              <input type="date" value="${t.deadline||''}" onchange="updTodo(${t.id},this.value)"/>
+            </div>
+          </div>
+        </div>
+        ${t.deadline&&t.added?`<div class="cdrow"><span class="pct">${Math.round(pct*100)}% uplynulo</span>${cd?`<span class="badge" style="color:${co.tx};background:${co.bg};border:2px solid ${co.c}55"${bl}>${cd}</span>`:''}</div>${bar(pct)}`:''}
+      </div>
+    </div>`;
+  });
+  return h;
+}
+
+function render(){
+  document.getElementById('app').innerHTML=`<div id="main">
+    <div class="chip"><span class="chip-dot"></span>Výcvikový systém</div>
+    <div class="t1">Přehled</div><div class="tbar"></div>
+    <div class="t2">&amp; Úkoly</div>
+    <div class="sub">Periodizace výcviku · správa úkolů</div>
+    <div class="tabs">
+      <button class="tab${S.tab==='dates'?' on':''}" onclick="sTab('dates')">Periodizace</button>
+      <button class="tab${S.tab==='todos'?' on':''}" onclick="sTab('todos')">Úkoly</button>
+    </div>
+    <div id="con">${S.tab==='dates'?rPeriod():rTodos()}</div>
+  </div>`;
+  animBars();
+}
+
+function sTab(t){S.tab=t;render();}
+function tgAdd(v){S.showAdd=v;render();}
+function updDate(id,v){S.items=S.items.map(i=>i.id===id?{...i,date:v}:i);sv();render();}
+function delItem(id){S.items=S.items.filter(i=>i.id!==id);sv();render();}
+function addItem(){
+  const l=document.getElementById('nL').value.trim();if(!l)return;
+  S.items.push({id:Date.now(),label:l,months:parseInt(document.getElementById('nM').value)||3,date:'',group:document.getElementById('nG').value.trim()||'Ostatní'});
+  S.showAdd=false;sv();render();
+}
+function updTodo(id,v){S.todos=S.todos.map(t=>t.id===id?{...t,deadline:v}:t);sv();render();}
+function delTodo(id){S.todos=S.todos.filter(t=>t.id!==id);sv();render();}
+function doneTodo(id){
+  const el=document.getElementById('tc'+id);
+  if(el){el.classList.add('gone');setTimeout(()=>{S.todos=S.todos.filter(t=>t.id!==id);sv();render();},380);}
+}
+function addTodo(){
+  const t=document.getElementById('tT').value.trim();if(!t)return;
+  S.todos.push({id:Date.now(),text:t,added:new Date().toISOString().slice(0,10),deadline:document.getElementById('tD').value});
+  sv();render();
+}
+
+load();render();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+</body>
+</html>
+
+{
+  "name": "Výcvikový systém",
+  "short_name": "Výcvik",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f5f2ea",
+  "theme_color": "#f5f2ea",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
+const CACHE = "vycvik-v1";
+const FILES = ["index.html", "manifest.json", "icon.png"];
+
+self.addEventListener("install", e => {
+  e.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(FILES))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", e => {
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match("index.html")))
+  );
+});
