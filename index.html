@@ -213,11 +213,12 @@ function rPeriod(){
   if(S.showAdd){
     h+=`<div class="fcard"><div class="stripe"></div><div class="fbody">
       <div class="ftitle">Nová položka</div>
-      <div style="margin-bottom:8px"><div class="flabel">Název</div><input class="finp" id="nL" placeholder="Název..."/></div>
+      <div style="margin-bottom:8px"><div class="flabel">Název</div><input class="finp" id="nL" placeholder="Název..." value="${S.newLabel||''}"/></div>
       <div class="frow" style="margin-bottom:12px">
-        <div style="flex:1"><div class="flabel">Skupina</div><input class="finp" id="nG" placeholder="Roční…"/></div>
-        <div style="width:80px"><div class="flabel">Měsíce</div><input class="finp" id="nM" type="number" value="3" min="1" style="text-align:center"/></div>
+        <div style="flex:1"><div class="flabel">Skupina</div><input class="finp" id="nG" placeholder="Roční…" value="${S.newGroup||''}"/></div>
+        <div style="width:80px"><div class="flabel">Měsíce</div><input class="finp" id="nM" type="number" placeholder="12" min="1" style="text-align:center" value="${S.newMonths||''}"/></div>
       </div>
+      <div style="font-size:10px;color:#7a6830;margin-bottom:10px;font-weight:600">Příklady: 1 = měsíc, 3 = čtvrtletí, 12 = rok, 24 = 2 roky</div>
       <div class="frow"><button class="pbtn" onclick="addItem()">Přidat</button><button class="sbtn" onclick="tgAdd(false)">Zrušit</button></div>
     </div></div>`;
   } else {
@@ -302,13 +303,23 @@ function render(){
 }
 
 function sTab(t){S.tab=t;render();}
-function tgAdd(v){S.showAdd=v;render();}
+
 function updDate(id,v){S.items=S.items.map(i=>i.id===id?{...i,date:v}:i);sv();render();}
 function delItem(id){S.items=S.items.filter(i=>i.id!==id);sv();render();}
 function addItem(){
-  const l=document.getElementById('nL').value.trim();if(!l)return;
-  S.items.push({id:Date.now(),label:l,months:parseInt(document.getElementById('nM').value)||3,date:'',group:document.getElementById('nG').value.trim()||'Ostatní'});
-  S.showAdd=false;sv();render();
+  const l=document.getElementById('nL').value.trim();
+  const mRaw=document.getElementById('nM').value.trim();
+  const g=document.getElementById('nG').value.trim();
+  if(!l)return;
+  const m=parseInt(mRaw,10);
+  if(!m||m<1){alert('Zadej počet měsíců (např. 12 pro roční)');return;}
+  S.items.push({id:Date.now(),label:l,months:m,date:'',group:g||'Ostatní'});
+  S.showAdd=false;S.newLabel='';S.newGroup='';S.newMonths='';sv();render();
+}
+function tgAdd(v){
+  S.showAdd=v;
+  if(!v){S.newLabel='';S.newGroup='';S.newMonths='';}
+  render();
 }
 function updTodo(id,v){S.todos=S.todos.map(t=>t.id===id?{...t,deadline:v}:t);sv();render();}
 function delTodo(id){S.todos=S.todos.filter(t=>t.id!==id);sv();render();}
